@@ -1,0 +1,14 @@
+# Shared-pool demo: N model servers behind one Router. The Router owns
+# the InferencePool (spec.pool, explicit selector); two workloads share
+# the pool label; two ModelServers join the pool via poolRef instead of
+# each creating their own. Requires: GAIE + Gateway API CRDs, and the
+# llm-d-operators manager running against the cluster.
+#
+#   kubectl apply -k config/demo-shared
+#
+# Expected steady state: both ModelServers Ready, exactly one EPP
+# Deployment and one InferencePool.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - demo-shared.yaml

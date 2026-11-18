@@ -1,0 +1,15 @@
+apiVersion: serving.llm-d.ai/v1alpha1
+kind: ModelServer
+metadata:
+  name: qwen3-32b
+spec:
+  workload:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: optimized-baseline-nvidia-gpu-vllm-decode
+  routerRef: shared-router
+  targetPort: 8000
+  # gateway omitted: falls back to the namespace annotation
+  # serving.llm-d.ai/default-gateway
+  # gateway: inference-gateway
+  # hostname: qwen.internal

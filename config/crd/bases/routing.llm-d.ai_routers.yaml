@@ -1,0 +1,660 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.17.3
+  name: routers.routing.llm-d.ai
+spec:
+  group: routing.llm-d.ai
+  names:
+    kind: Router
+    listKind: RouterList
+    plural: routers
+    shortNames:
+    - router
+    singular: router
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[?(@.type=='Ready')].status
+      name: Ready
+      type: string
+    - jsonPath: .status.conditions[?(@.type=='Ready')].reason
+      name: Reason
+      type: string
+    - jsonPath: .status.poolName
+      name: Pool
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: |-
+          Router is a deployable llm-d-router Endpoint Picker. A Router stays
+          inert (no EPP Deployment) until exactly one InferencePool references
+          its Service via endpointPickerRef; the EPP watches that pool. That
+          link arrives either from a ModelServer-created pool or from the
+          Router's own spec.pool (shared-pool mode, which activates it
+          upfront). Routers are shared infrastructure, typically created by
+          the platform admin and referenced by ModelServers.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: |-
+              RouterSpec defines the desired state of Router: a deployable
+              llm-d-router Endpoint Picker (EPP) in gateway mode. The Router never
+              renders a proxy; a Gateway API implementation (Envoy Gateway,
+              agentgateway, Istio, ...) owns the data plane and consults this EPP
+              through the InferencePool that points at it.
+            properties:
+              config:
+                description: |-
+                  Config is the EndpointPickerConfig the EPP runs. When omitted,
+                  the operator's default profile is used (queue-scorer,
+                  kv-cache-utilization-scorer, prefix-cache-scorer with their
+                  built-in defaults). The rendered document is observable via
+                  status.configHash.
+                properties:
+                  dataLayer:
+                    description: |-
+                      DataLayer configures the DataLayer. It is required if the new
+                      DataLayer is enabled.
+                    properties:
+                      discovery:
+                        description: |-
+                          Discovery specifies which EndpointDiscovery plugin to use for
+                          populating the endpoint datastore. If omitted, the EPP uses the
+                          default Kubernetes-based discovery.
+                        properties:
+                          pluginRef:
+                            description: |-
+                              PluginRef is the name of the plugin instance (from the Plugins
+                              list) that implements EndpointDiscovery.
+                            type: string
+                        required:
+                        - pluginRef
+                        type: object
+                      injectDefaults:
+                        description: |-
+                          InjectDefaults controls automatic injection of the default metrics
+                          source and extractor. Defaults to true when omitted. Set to false
+                          to disable all default source injection.
+                        type: boolean
+                      sources:
+                        description: Sources is the list of sources to define to the
+                          DataLayer.
+                        items:
+                          description: |-
+                            DataLayerSource contains the configuration of a DataSource of the
+                            DataLayer feature.
+                          properties:
+                            extractors:
+                              description: |-
+                                Extractors specifies the list of Plugin instances to be
+                                associated with this Source.
+                              items:
+                                description: |-
+                                  DataLayerExtractor contains the configuration of an Extractor of the
+                                  DataLayer feature.
+                                properties:
+                                  pluginRef:
+                                    description: |-
+                                      PluginRef specifies a particular Plugin instance to be associated
+                                      with this Extractor.
+                                    type: string
+                                required:
+                                - pluginRef
+                                type: object
+                              type: array
+                            pluginRef:
+                              description: |-
+                                PluginRef specifies a particular Plugin instance to be associated
+                                with this Source.
+                              type: string
+                          required:
+                          - extractors
+                          - pluginRef
+                          type: object
+                        type: array
+                    type: object
+                  featureGates:
+                    description: |-
+                      FeatureGates is a set of flags that enable various experimental
+                      features with the EPP. If omitted none of these experimental
+                      features will be enabled.
+                    items:
+                      type: string
+                    type: array
+                  flowControl:
+                    description: |-
+                      FlowControl configures the Flow Control layer.
+                      This configuration is only respected if the "flowControl"
+                      FeatureGate is enabled.
+                    properties:
+                      defaultNegativePriorityBand:
+                        description: |-
+                          DefaultNegativePriorityBand defines a separate template for
+                          priority levels strictly below zero. If not specified, negative
+                          priorities fall back to DefaultPriorityBand.
+                        properties:
+                          fairnessPolicyRef:
+                            description: |-
+                              FairnessPolicyRef specifies the name of the policy that governs
+                              flow selection. If omitted, the system default is used.
+                            type: string
+                          maxBytes:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              MaxBytes is the maximum number of bytes allowed for this priority
+                              band. If omitted, the system default is used.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          maxRequests:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              MaxRequests is the maximum number of concurrent requests allowed
+                              for this priority band. If omitted, no request limit is enforced.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          orderingPolicyRef:
+                            description: |-
+                              OrderingPolicyRef specifies the name of the policy that governs
+                              request selection within a flow. If omitted, the system default
+                              is used.
+                            type: string
+                          priority:
+                            description: |-
+                              Priority is the integer priority level for this band. Higher
+                              values indicate higher priority.
+                            type: integer
+                        required:
+                        - priority
+                        type: object
+                      defaultPriorityBand:
+                        description: |-
+                          DefaultPriorityBand defines a template for handling traffic with
+                          priority levels not explicitly configured in PriorityBands. If not
+                          specified, a system-default template is used.
+                        properties:
+                          fairnessPolicyRef:
+                            description: |-
+                              FairnessPolicyRef specifies the name of the policy that governs
+                              flow selection. If omitted, the system default is used.
+                            type: string
+                          maxBytes:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              MaxBytes is the maximum number of bytes allowed for this priority
+                              band. If omitted, the system default is used.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          maxRequests:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: |-
+                              MaxRequests is the maximum number of concurrent requests allowed
+                              for this priority band. If omitted, no request limit is enforced.
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          orderingPolicyRef:
+                            description: |-
+                              OrderingPolicyRef specifies the name of the policy that governs
+                              request selection within a flow. If omitted, the system default
+                              is used.
+                            type: string
+                          priority:
+                            description: |-
+                              Priority is the integer priority level for this band. Higher
+                              values indicate higher priority.
+                            type: integer
+                        required:
+                        - priority
+                        type: object
+                      defaultRequestTTL:
+                        description: |-
+                          DefaultRequestTTL serves as a fallback timeout for requests that
+                          do not specify their own deadline. If 0 or omitted, it defaults to
+                          the client context deadline.
+                        type: string
+                      maxBytes:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          MaxBytes defines the global maximum aggregate byte size of all
+                          active requests across all priority levels. Accepts standard
+                          Kubernetes resource quantities (e.g., "1Gi", "500M"). If omitted,
+                          no global byte limit is enforced.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      maxRequests:
+                        anyOf:
+                        - type: integer
+                        - type: string
+                        description: |-
+                          MaxRequests defines the global maximum number of concurrent
+                          requests across all priority levels. Accepts standard Kubernetes
+                          resource quantities (e.g., "100", "1k"). If omitted, no global
+                          request limit is enforced.
+                        pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                        x-kubernetes-int-or-string: true
+                      priorityBands:
+                        description: |-
+                          PriorityBands explicitly defines policies for specific priority
+                          levels. Traffic matching these priorities will be handled
+                          according to these rules.
+                        items:
+                          description: PriorityBandConfig configures a single priority
+                            band.
+                          properties:
+                            fairnessPolicyRef:
+                              description: |-
+                                FairnessPolicyRef specifies the name of the policy that governs
+                                flow selection. If omitted, the system default is used.
+                              type: string
+                            maxBytes:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: |-
+                                MaxBytes is the maximum number of bytes allowed for this priority
+                                band. If omitted, the system default is used.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            maxRequests:
+                              anyOf:
+                              - type: integer
+                              - type: string
+                              description: |-
+                                MaxRequests is the maximum number of concurrent requests allowed
+                                for this priority band. If omitted, no request limit is enforced.
+                              pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                              x-kubernetes-int-or-string: true
+                            orderingPolicyRef:
+                              description: |-
+                                OrderingPolicyRef specifies the name of the policy that governs
+                                request selection within a flow. If omitted, the system default
+                                is used.
+                              type: string
+                            priority:
+                              description: |-
+                                Priority is the integer priority level for this band. Higher
+                                values indicate higher priority.
+                              type: integer
+                          required:
+                          - priority
+                          type: object
+                        type: array
+                      saturationDetector:
+                        description: |-
+                          SaturationDetector specifies which saturation detector plugin to
+                          use for both Admission and Flow Control. If omitted,
+                          "utilization-detector" is used by default.
+                        properties:
+                          pluginRef:
+                            description: |-
+                              PluginRef specifies the name of the plugin instance to use for
+                              saturation detection. The reference is to the name of an entry of
+                              the Plugins defined in the configuration's Plugins section. If
+                              unspecified, "utilization-detector" is used by default.
+                            type: string
+                        type: object
+                      usageLimitPolicyPluginRef:
+                        description: |-
+                          UsageLimitPolicyPluginRef specifies the UsageLimitPolicy plugin to
+                          use for adaptive capacity management. Must reference a named
+                          plugin instance defined in the top-level Plugins section. If
+                          omitted, a default static policy is used.
+                        type: string
+                    type: object
+                  parser:
+                    description: |-
+                      Parser specifies the parsing logic used by the EPP to process
+                      protocol messages.
+
+                      Deprecated: use requestHandler.parsers instead. If both are set,
+                      the new field is used.
+                    properties:
+                      pluginRef:
+                        description: |-
+                          PluginRef specifies a particular Plugin instance to be associated
+                          with this Parser. Default: openai-parser.
+                        type: string
+                    required:
+                    - pluginRef
+                    type: object
+                  plugins:
+                    description: Plugins is the list of plugins that will be instantiated.
+                    items:
+                      description: |-
+                        PluginSpec contains the information that describes a plugin that
+                        will be instantiated.
+                      properties:
+                        name:
+                          description: |-
+                            Name provides a name for plugin entries to reference. If
+                            omitted, the value of the Plugin's Type field will be used.
+                          type: string
+                        parameters:
+                          description: |-
+                            Parameters are the set of parameters to be passed to the plugin's
+                            factory function. The factory function is responsible for parsing
+                            the parameters.
+                          x-kubernetes-preserve-unknown-fields: true
+                        type:
+                          description: Type specifies the plugin type to be instantiated.
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    type: array
+                  requestHandler:
+                    description: |-
+                      RequestHandler specifies the handling logic used by the EPP to
+                      process incoming requests.
+                    properties:
+                      parsers:
+                        description: |-
+                          Parsers specifies the parsing plugins used by the EPP to process
+                          protocol messages. If unspecified, default parsing behavior will
+                          be applied.
+                        items:
+                          description: ParserConfig contains the configuration for
+                            a parser.
+                          properties:
+                            pluginRef:
+                              description: |-
+                                PluginRef specifies a particular Plugin instance to be associated
+                                with this Parser. Default: openai-parser.
+                              type: string
+                          required:
+                          - pluginRef
+                          type: object
+                        type: array
+                    type: object
+                  saturationDetector:
+                    description: |-
+                      SaturationDetector specifies which saturation detector plugin to use.
+
+                      Deprecated: use flowControl.saturationDetector instead. If both are
+                      set, the new field is used.
+                    properties:
+                      pluginRef:
+                        description: |-
+                          PluginRef specifies the name of the plugin instance to use for
+                          saturation detection. The reference is to the name of an entry of
+                          the Plugins defined in the configuration's Plugins section. If
+                          unspecified, "utilization-detector" is used by default.
+                        type: string
+                    type: object
+                  schedulingProfiles:
+                    description: |-
+                      SchedulingProfiles is the list of named SchedulingProfiles
+                      that will be created.
+                    items:
+                      description: |-
+                        SchedulingProfile contains the information to create a
+                        SchedulingProfile entry to be used by the scheduler.
+                      properties:
+                        name:
+                          description: Name specifies the name of this SchedulingProfile.
+                          type: string
+                        plugins:
+                          description: |-
+                            Plugins is the list of plugins for this SchedulingProfile. They
+                            are assigned to the appropriate "slots" based on their type.
+                          items:
+                            description: |-
+                              SchedulingPlugin describes a plugin that will be associated with a
+                              SchedulingProfile entry.
+                            properties:
+                              pluginRef:
+                                description: |-
+                                  PluginRef specifies a particular Plugin instance to be associated
+                                  with this SchedulingProfile. The reference is to the name of an
+                                  entry of the Plugins defined in the configuration's Plugins
+                                  section.
+                                type: string
+                              weight:
+                                description: Weight is the weight to be used if this
+                                  plugin is a Scorer.
+                                type: number
+                            required:
+                            - pluginRef
+                            type: object
+                          type: array
+                      required:
+                      - name
+                      - plugins
+                      type: object
+                    type: array
+                required:
+                - plugins
+                - schedulingProfiles
+                type: object
+              image:
+                description: |-
+                  Image overrides the EPP container image. When set here it is
+                  pinned: later operator upgrades do not change it until the user
+                  changes this field.
+                type: string
+              leaderElection:
+                description: |-
+                  LeaderElection enables the active-passive HA mode: one leader
+                  serves scheduling decisions, the rest are warm standbys. When
+                  false, all replicas are active (active-active) and must only run
+                  active-active compatible plugins. Defaults to false.
+                type: boolean
+              pool:
+                description: |-
+                  Pool declares a shared InferencePool the Router owns upfront,
+                  activating it without waiting for a ModelServer-created pool to
+                  link. ModelServers join it via spec.poolRef.
+                properties:
+                  selector:
+                    additionalProperties:
+                      type: string
+                    description: |-
+                      Selector is the pool's endpoint selector exactly as given:
+                      workloads join the pool by carrying these labels on their pods.
+                      Unlike the ModelServer path it is NOT derived from a workload —
+                      the platform admin owns the label contract.
+                    minProperties: 1
+                    type: object
+                  targetPort:
+                    description: |-
+                      TargetPort is the engine container port the pool routes to.
+                      Defaults to 8000.
+                    format: int32
+                    maximum: 65535
+                    minimum: 1
+                    type: integer
+                required:
+                - selector
+                type: object
+              replicas:
+                description: |-
+                  Replicas is the number of EPP pods. One replica is
+                  active; additional replicas require LeaderElection.
+                  Defaults to 1.
+                format: int32
+                minimum: 0
+                type: integer
+              resources:
+                description: |-
+                  Resources for the EPP container. The GPU count concept does not
+                  apply; the EPP is control plane only.
+                properties:
+                  claims:
+                    description: |-
+                      Claims lists the names of resources, defined in spec.resourceClaims,
+                      that are used by this container.
+
+                      This field depends on the
+                      DynamicResourceAllocation feature gate.
+
+                      This field is immutable. It can only be set for containers.
+                    items:
+                      description: ResourceClaim references one entry in PodSpec.ResourceClaims.
+                      properties:
+                        name:
+                          description: |-
+                            Name must match the name of one entry in pod.spec.resourceClaims of
+                            the Pod where this field is used. It makes that resource available
+                            inside a container.
+                          type: string
+                        request:
+                          description: |-
+                            Request is the name chosen for a request in the referenced claim.
+                            If empty, everything from the claim is made available, otherwise
+                            only the result of this request.
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
+                  limits:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Limits describes the maximum amount of compute resources allowed.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                  requests:
+                    additionalProperties:
+                      anyOf:
+                      - type: integer
+                      - type: string
+                      pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                      x-kubernetes-int-or-string: true
+                    description: |-
+                      Requests describes the minimum amount of compute resources required.
+                      If Requests is omitted for a container, it defaults to Limits if that is explicitly specified,
+                      otherwise to an implementation-defined value. Requests cannot exceed Limits.
+                      More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+                    type: object
+                type: object
+            type: object
+          status:
+            description: RouterStatus defines the observed state of Router.
+            properties:
+              conditions:
+                description: Conditions of the Router.
+                items:
+                  description: Condition contains details for one aspect of the current
+                    state of this API Resource.
+                  properties:
+                    lastTransitionTime:
+                      description: |-
+                        lastTransitionTime is the last time the condition transitioned from one status to another.
+                        This should be when the underlying condition changed.  If that is not known, then using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: |-
+                        message is a human readable message indicating details about the transition.
+                        This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: |-
+                        observedGeneration represents the .metadata.generation that the condition was set based upon.
+                        For instance, if .metadata.generation is currently 12, but the .status.conditions[x].observedGeneration is 9, the condition is out of date
+                        with respect to the current state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: |-
+                        reason contains a programmatic identifier indicating the reason for the condition's last transition.
+                        Producers of specific condition types may define expected values and meanings for this field,
+                        and whether the values are considered a guaranteed API.
+                        The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+                x-kubernetes-list-map-keys:
+                - type
+                x-kubernetes-list-type: map
+              configHash:
+                description: |-
+                  ConfigHash is a sha256 digest of the effective
+                  EndpointPickerConfig document rendered into the EPP's ConfigMap.
+                  It makes the effective configuration observable without exposing
+                  the full object in status.
+                type: string
+              observedGeneration:
+                description: ObservedGeneration is the generation most recently reconciled.
+                format: int64
+                type: integer
+              poolName:
+                description: |-
+                  PoolName is the name of the single InferencePool currently wired
+                  to this Router's EPP, when one is linked.
+                type: string
+              serviceName:
+                description: |-
+                  ServiceName is the name of the EPP Service that InferencePools
+                  reference in their endpointPickerRef.
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

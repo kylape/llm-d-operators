@@ -1,0 +1,20 @@
+apiVersion: routing.llm-d.ai/v1alpha1
+kind: Router
+metadata:
+  name: shared-router
+spec:
+  replicas: 1
+  # config omitted: the operator's default profile applies
+  # (queue/kv-cache/prefix-cache scorers). configHash lands in status.
+  #
+  # config:
+  #   plugins:
+  #   - type: approx-prefix-cache-producer
+  #   - type: inflight-load-producer
+  #   - type: prefix-cache-affinity-filter
+  #   - type: token-load-scorer
+  #   schedulingProfiles:
+  #   - name: default
+  #     plugins:
+  #     - pluginRef: prefix-cache-affinity-filter
+  #     - pluginRef: token-load-scorer

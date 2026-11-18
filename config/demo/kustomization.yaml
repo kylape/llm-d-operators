@@ -1,0 +1,12 @@
+# Self-contained demo: two CRs + a simulated model-server workload.
+# Requires: GAIE + Gateway API CRDs, and the llm-d-operators manager
+# running against the cluster.
+#
+#   kubectl apply -k config/demo
+#
+# The namespace annotation is the platform-admin contract: ModelServers
+# with no explicit spec.gateway attach to demo-gateway.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - demo.yaml

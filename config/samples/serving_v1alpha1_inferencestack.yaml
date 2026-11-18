@@ -1,0 +1,34 @@
+# The convenience path: typed model semantics in, serving stack out.
+# The controller renders the engine Deployment and (because routing
+# is set) an owned ModelServer wiring it into the namespace's default
+# Router. Omit `routing` for a plain workload, or set
+# `routing: {routerRef: name}` to bypass the namespace default.
+apiVersion: serving.llm-d.ai/v1alpha1
+kind: InferenceStack
+metadata:
+  name: qwen3-32b
+spec:
+  model:
+    uri: hf://Qwen/Qwen3-32B
+    # name defaults to metadata.name
+  runtime: vllm
+  replicas: 1
+  parallelism:
+    tensor: 2 # nvidia.com/gpu request/limit is derived from this
+  # accelerator:
+  #   product: a100-80gb # nodeSelector from the built-in catalog
+  engine:
+    # appended after the catalog's derived args (argparse last-wins)
+    args: ["--max-model-len", "32768"]
+    env:
+    - name: HF_TOKEN
+      valueFrom:
+        secretKeyRef:
+          name: hf-token
+          key: token
+  resources:
+    requests:
+      cpu: "8"
+      memory: 32Gi
+    # no GPU field here — GPU count is always parallelism.tensor
+  routing: {} # the namespace's default Router

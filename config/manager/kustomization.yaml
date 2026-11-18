@@ -1,0 +1,18 @@
+# In-cluster manager: Deployment + ServiceAccount + ClusterRoleBinding.
+# The image reference is overridden via the images transformer below
+# (or `kustomize edit set image`); build and push it with the usual
+# docker/podman flow first:
+#
+#   podman build -t ghcr.io/llm-d/llm-d-operators:dev .
+#   podman push ghcr.io/llm-d/llm-d-operators:dev
+#
+# The ClusterRoleBinding references the generated manager-role
+# ClusterRole, so apply config/rbac as well — or use config/default,
+# which composes CRDs + RBAC + manager.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - manager.yaml
+images:
+- name: ghcr.io/llm-d/llm-d-operators
+  newTag: dev

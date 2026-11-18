@@ -1,0 +1,14 @@
+# InferenceStack demo: the convenience path. One Router (the
+# namespace default), one routed stack (`routing: {}` resolves it),
+# one plain workload (no routing). Requires: GAIE + Gateway API CRDs,
+# and the llm-d-operators manager running against the cluster.
+#
+#   kubectl apply -k config/demo-istack
+#
+# For real vLLM instead of the inference-sim stand-in, also apply
+# config/samples/serving_v1alpha1_runtime-catalog.yaml to the
+# namespace before creating the stacks.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - demo-istack.yaml
